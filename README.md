@@ -102,5 +102,5 @@ Feel free to submit issues or contribute by making a pull request if you have im
 ## Author
 
 - **Sri Ranjit M**  
-  [Github Profile](https://github.com/your-profile)  
-  [sriranjitmohan26@gmail.com](mailto:your-email@example.com)
+  [Github Profile](https://github.com/sriranjit)  
+  [sriranjitmohan26@gmail.com](mailto:sriranjitmohan26@gmail.com)
