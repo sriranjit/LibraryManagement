@@ -1,5 +1,3 @@
-Fri Oct 18 14:13:56 IST 2024 - Added book: java, ISBN: 123Author: ranjit
-Fri Oct 18 14:14:01 IST 2024 - Issued Book: javaISBN: 123
 Sun Oct 20 17:33:49 IST 2024 - Added book: JAVA PROGRAMMING, ISBN: 1001, Author: SRI RANJIT M
 Sun Oct 20 20:12:17 IST 2024 - Added book: PYTHON, ISBN: 1002, Author: SOWMIYA M
 Sun Oct 20 20:22:54 IST 2024 - ISSUED BOOK : JAVA PROGRAMMING, ISBN : 1001
