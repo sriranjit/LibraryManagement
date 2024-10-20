@@ -2,10 +2,21 @@ package library;
 
 import java.io.*;
 import java.util.*;
+import java.sql.*;
+import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Library{
     Scanner sc = new Scanner(System.in);
-    HashMap<Integer,Book> hm = new HashMap<>();
+    final private static Logger logger = Logger.getLogger(Library.class.getName());
+    public Connection getConnection() throws SQLException {
+        String url = "jdbc:mysql://localhost:3306/library_management";
+        String user = "root";
+        String password = "2618";
+
+        return DriverManager.getConnection(url,user,password);
+    }
     public void logTransaction(String transaction) {
         try {
             FileWriter writer = new FileWriter("library_transaction.txt", true); // true means append to the file
@@ -23,70 +34,128 @@ public class Library{
         System.out.print("Enter ISBN : ");
         int isbn = sc.nextInt();
         sc.nextLine();
-        if(!hm.containsKey(isbn)){
-            Book bk = new Book(bookTitle,author);
-            hm.put(isbn,bk);
-            System.out.println("Book Added : "+bookTitle);
-            logTransaction("Added book: " + bk.getBookTitle() + ", ISBN: " + isbn+", Author: "+author);
+        try(Connection conn = getConnection();
+            Statement stmt = conn.createStatement()){
+            String addQuery = "INSERT INTO books (isbn, title, author) VALUES ("+isbn+", '"+bookTitle+"', '"+author+"')";
+            stmt.executeUpdate(addQuery);
+            System.out.println("Added Book : "+bookTitle);
+
+            logTransaction("Added book: " + bookTitle + ", ISBN: " + isbn+", Author: "+author);
         }
-        else{
+        catch (SQLIntegrityConstraintViolationException e){
             System.out.println("ISBN Already Exists.");
         }
-    }
-    public void check(int isbn){
-        if(!hm.containsKey(isbn)){
-            System.out.println("No such book found.");
+        catch(SQLException e){
+            logger.log(Level.SEVERE,"ERROR ADDING THE BOOK : "+bookTitle,e);
         }
     }
     public void issueBook(){
         System.out.print("Enter ISBN to Issue : ");
         int isbn = sc.nextInt();
         sc.nextLine();
-        check(isbn);
-        if(hm.containsKey(isbn)){
-            Book b = hm.get(isbn);
-            if(!b.getBookIssue()){
-                System.out.println("Book Issued : "+b.getBookTitle());
-                b.setBookIssue(true);
-                logTransaction("Issued Book: "+b.getBookTitle()+"ISBN: "+isbn);
+
+        try(Connection conn = getConnection();
+        Statement stmt = conn.createStatement()){
+            String checkQuery = "SELECT * FROM books WHERE isbn = "+isbn;
+            ResultSet rs = stmt.executeQuery(checkQuery);
+            if(rs.next()){
+                boolean isIssued = rs.getBoolean("is_issued");
+                String title = rs.getString("title");
+                if(!isIssued){
+                    String issueQuery = "UPDATE books SET is_issued = true WHERE isbn = "+isbn;
+                    stmt.executeUpdate(issueQuery);
+                    System.out.println("Issued Book : "+title);
+                    logTransaction("ISSUED BOOK : "+title+", ISBN : "+isbn);
+                }
+                else{
+                    System.out.println("Book is already Issued.");
+                }
             }
             else{
-                System.out.println("Book is already issued.");
+                System.out.println("No such book found.");
             }
+        }
+        catch (SQLException e){
+            logger.log(Level.SEVERE,"ERROR ISSUING THE BOOK WITH ISBN : "+isbn);
         }
     }
     public void returnBook(){
         System.out.print("Enter ISBN to Return : ");
         int isbn = sc.nextInt();
         sc.nextLine();
-        check(isbn);
-        if(hm.containsKey(isbn)){
-            Book b = hm.get(isbn);
-            System.out.println("Book Returned : "+b.getBookTitle());
-            logTransaction("Returned Book: "+b.getBookTitle()+"ISBN: "+isbn);
-            b.setBookIssue(false);
+        try(Connection conn = getConnection();
+        Statement stmt = conn.createStatement()){
+            String checkQuery = "SELECT * FROM books WHERE isbn = "+isbn;
+            ResultSet rs = stmt.executeQuery(checkQuery);
+
+            if(rs.next()){
+                boolean isIssued = rs.getBoolean("is_issued");
+                String title = rs.getString("title");
+                if(isIssued){
+                    String returnQuery = "UPDATE books SET is_issued = false WHERE isbn = "+isbn;
+                    stmt.executeUpdate(returnQuery);
+
+                    System.out.println("Returned Book : "+title);
+                    logTransaction("Returned Book : "+title+", ISBN : "+isbn);
+                }
+                else{
+                    System.out.println("Book is already returned.");
+                }
+            }
+            else{
+                System.out.println("No such book found.");
+            }
+        }
+        catch(SQLException e){
+            logger.log(Level.SEVERE,"ERROR RETURNING THE BOOK WITH ISBN : "+isbn);
         }
     }
     public void checkAvailability(){
         System.out.print("Enter ISBN to Check Availability : ");
         int isbn = sc.nextInt();
         sc.nextLine();
-        if(hm.containsKey(isbn)){
-            System.out.println("Book is Available.");
+        try(Connection conn = getConnection();
+        Statement stmt = conn.createStatement()){
+            String checkQuery = "SELECT * FROM books WHERE isbn = "+isbn;
+            ResultSet rs = stmt.executeQuery(checkQuery);
+
+            if(rs.next()){
+                boolean isIssued = rs.getBoolean("is_issued");
+                System.out.println("Title : "+rs.getString("title"));
+                System.out.println("Author : "+rs.getString("author"));
+                System.out.println("Availability : "+(isIssued ? "Issued" : "Available"));
+            }
+
+            else {
+                System.out.println("No such book found.");
+            }
         }
-        else{
-            System.out.println("No such book found.");
+        catch(SQLException e){
+            logger.log(Level.SEVERE,"ERROR CHECKING THE AVAILABILITY OF THE BOOK WITH ISBN : "+isbn);
         }
     }
     public void viewAllBooks(){
         System.out.println("Books Available in the Library : ");
 
-        for(Map.Entry<Integer,Book> entry : hm.entrySet()){
-            Book b = hm.get(entry.getKey());
-            System.out.println("Title : "+b.getBookTitle());
-            System.out.println("Author : "+b.getAuthor());
-            System.out.println("ISBN : "+entry.getKey());
-            System.out.println("Book Issued : "+b.getBookIssue());
+        try(Connection conn = getConnection();
+        Statement stmt = conn.createStatement()){
+            String displayQuery = "SELECT * FROM books";
+            ResultSet rs = stmt.executeQuery(displayQuery);
+            boolean hasBooks = false;
+            while(rs.next()){
+                hasBooks = true;
+                boolean isIssued =rs.getBoolean("is_issued");
+                System.out.println("ISBN : "+rs.getInt("isbn"));
+                System.out.println("Title : "+rs.getString("title"));
+                System.out.println("Author : "+rs.getString("author"));
+                System.out.println("Availability : "+(isIssued ? "Issued" : "Available"));
+            }
+            if(!hasBooks){
+                System.out.println("No Books Found.");
+            }
+        }
+        catch(SQLException e){
+            logger.log(Level.SEVERE,"ERROR RETRIEVING THE BOOKS FROM DATABASE.");
         }
     }
 }
